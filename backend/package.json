@@ -1,0 +1,33 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": " ",
+  "author": "shinekwon",
+  "dependencies": {
+    "axios": "^0.18.0",
+    "dotenv": "^5.0.0",
+    "joi": "^13.1.2",
+    "jsonwebtoken": "^8.1.1",
+    "koa": "^2.5.0",
+    "koa-bodyparser": "^4.2.0",
+    "koa-router": "^7.4.0",
+    "mongoose": "^5.0.6",
+    "mongoose-double": "^0.0.1",
+    "react-router-dom": "^4.2.2",
+    "ws": "^4.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^4.18.0",
+    "eslint-config-standard": "^11.0.0",
+    "eslint-plugin-import": "^2.8.0",
+    "eslint-plugin-node": "^6.0.0",
+    "eslint-plugin-promise": "^3.6.0",
+    "eslint-plugin-standard": "^3.0.1",
+    "nodemon": "^1.15.0"
+  },
+  "scripts": {
+    "start:dev": "nodemon --watch src/ src/index.js",
+    "crawler:dev": "nodemon --watch src/crawler/ src/crawler/index.js"
+  }
+}
