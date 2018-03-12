@@ -13,7 +13,6 @@ module.exports = (function() {
   };
 
   function convertToTickerObject(data) {
-
     const keys = [
       'id',
       'last',
@@ -38,9 +37,7 @@ module.exports = (function() {
     });
 
     return object;
-  }
-
-
+  };
 
   return {
     getCurrenyPairName,

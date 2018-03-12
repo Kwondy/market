@@ -1,39 +1,52 @@
 require('dotenv').config();
-
-const poloniex = require('../lib/poloniex');
 const db = require('../db');
+const poloniex = require('../lib/poloniex');
 const ExchangeRate = require('../db/models/ExchangeRate');
-const socket = require('./socket')
+const socket = require('./socket');
 const { parseJSON, polyfill } = require('../lib/common');
+const log = require('../lib/log');
+const currencyMap = require('../lib/poloniex/currencyPairMap');
+// const redis = require('redis');
 
-db.connect();
-socket.connect();
+// const publisher = redis.createClient();
 
-async function registerInitialExchangeRate () {
+const initialize = async () => {
+  await db.connect();
+  await registerInitialExchangeRate();
+  socket.connect();
+};
+
+async function registerInitialExchangeRate() {
   const tickers = await poloniex.getTickers();
 
   // removes all the data from the collection (only for temporary use)
   await ExchangeRate.drop();
-  console.log('dropped exchangerate collection');
+  log('dropped exchangerate collection');
   const keys = Object.keys(tickers);
   const promises = keys.map(
     key => {
       const ticker = tickers[key];
+      
+      if (!currencyMap[ticker.id.toString()]) {
+        return Promise.resolve();
+      }
+
       const data = Object.assign({name: key}, ticker);
       const exchangeRate = new ExchangeRate(data);
       return exchangeRate.save();
     }
   );
-  try{
+
+  try {
     await Promise.all(promises);
   } catch (e) {
     console.log(e);
   }
 
-  console.log('succeed');
+  console.log('succeed!');
 }
-
 async function updateEntireRate() {
+  log('updating entire rate...');
   const tickers = await poloniex.getTickers();
   const keys = Object.keys(tickers);
 
@@ -46,37 +59,52 @@ async function updateEntireRate() {
   try {
     await Promise.all(promises);
   } catch (e) {
-    console.error('Oops, failed to update entire rate!');
-    retun;
+    log.error('Oops, failed to update entire rate!');
+    return;
   }
 
-  console.log('Updated entire rate.');
+  log('done');
 }
 
 const messageHandler = {
   1002: async (data) => {
-    if(!data) return;
+    if (!data) return;
     const converted = poloniex.convertToTickerObject(data);
-    const { name } = converted;
-    const rest = polyfill.objectWithoutProperties(converted, ' name');
-
+    const { name, ...rest } = converted;
+    if(!name) return;
+    if(name === 'NULL_NULL') return;
+    
     try {
       await ExchangeRate.updateTicker(name, rest);
-      console.log('[Update]', name, new Date());
+      
+      const { last, percentChange, baseVolume, quoteVolume } = converted;
+      const payload = {
+        name, 
+        last: parseFloat(last), 
+        percentChange: parseFloat(percentChange), 
+        baseVolume: parseFloat(baseVolume), 
+        quoteVolume: parseFloat(quoteVolume), 
+        lastUpdated: new Date()
+      };
+      // publisher.publish('general', JSON.stringify({
+      //   type: 'TICKER',
+      //   payload
+      // }));
+      // log('Updated', name);
     } catch (e) {
       console.error(e);
     }
-
   }
 };
 
 socket.handleMessage = (message) => {
   const parsed = parseJSON(message);
-  if(!parsed) {
+  if (!parsed) {
     return null;
   }
+
   const [type, meta, data] = parsed;
-  if(messageHandler[type]) {
+  if (messageHandler[type]) {
     messageHandler[type](data);
   }
 };
@@ -84,3 +112,5 @@ socket.handleMessage = (message) => {
 socket.handleRefresh = () => {
   updateEntireRate();
 };
+
+initialize();
