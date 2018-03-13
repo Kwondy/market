@@ -1,11 +1,9 @@
-
 const mongoose = require('mongoose');
 require('mongoose-double')(mongoose);
 
-const{ Schema } = mongoose;
-const{ Types } = Schema;
+const { Schema } = mongoose;
+const { Types } = Schema;
 
-// Current currency status
 const ExchangeRate = new Schema({
   name: String,
   last: Types.Double,
@@ -25,14 +23,28 @@ const ExchangeRate = new Schema({
 
 ExchangeRate.index({name: 1}, {name: 'rateTypeIdentifier', unique: true});
 
-//only for temporary use
-ExchangeRate.statics.drop = function(){
+// only for temporary use
+ExchangeRate.statics.drop = function () {
   return this.remove({}).exec();
 };
 
-
 ExchangeRate.statics.updateTicker = function(name, data) {
-  return this.findOneAndUpdate({name}, {data, lastUpdated: new Date()}, { upsert: false, new: true }).exec();
+  return this.findOneAndUpdate({name}, {
+    ...data,
+    lastUpdated: new Date()
+  }, { upsert: false, new: true }).exec();
+};
+
+ExchangeRate.statics.showAll = function() {
+  return this.find({});
+};
+
+ExchangeRate.statics.getUSDRate = function() {
+  return this.findOne({name: 'USDT_BTC'}).exec().then(
+    (rate) => {
+      return 1 / rate.last.value;
+    }
+  );
 };
 
 module.exports = mongoose.model('ExchangeRate', ExchangeRate);

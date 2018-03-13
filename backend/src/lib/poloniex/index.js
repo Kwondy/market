@@ -1,12 +1,21 @@
 const currencyPairMap = require('./currencyPairMap');
 const axios = require('axios');
 
-module.exports = (function() {
-  function getCurrenyPairName(id) {
+module.exports = (function () {
+  function getChartData(currencyPair, period = 86400, start = 1420070400, retry) {
+    return axios.get(`https://poloniex.com/public?command=returnChartData&currencyPair=${currencyPair}&start=${start}&end=9999999999&period=${period}`, { timeout: 15000 }).then(
+      response => response.data
+    );
+  }
+
+  function getCurrencyPairName(id) {
+    if(id > 193) { 
+      return 'NULL_NULL';
+    }
     return currencyPairMap[id.toString()];
   }
 
-  function getTickers () {
+  function getTickers() {
     return axios.get('https://poloniex.com/public?command=returnTicker').then(
       response => response.data
     );
@@ -29,7 +38,7 @@ module.exports = (function() {
     data.forEach((value, i) => {
       // sets the name value
       if (i === 0) {
-        object.name = getCurrenyPairName(value);
+        object.name = getCurrencyPairName(value);
         return;
       }
       const key = keys[i];
@@ -37,11 +46,18 @@ module.exports = (function() {
     });
 
     return object;
-  };
+  }
+
+  function getOrderBook(currencyPair, depth) {
+    return axios.get(`https://poloniex.com/public?command=returnOrderBook&currencyPair=${currencyPair}&depth=3`)
+      .then(response => response.data);
+  }
 
   return {
-    getCurrenyPairName,
+    getCurrencyPairName,
     getTickers,
-    convertToTickerObject
+    convertToTickerObject,
+    getChartData,
+    getOrderBook
   };
 })();

@@ -31,6 +31,6 @@
   },
   "scripts": {
     "start:dev": "nodemon --watch src/ src/index.js",
-    "crawler:dev": "nodemon --watch src/crawler/ src/crawler/index.js"
+    "crawler:dev": "nodemon --watch src/crawler/ src/crawler/index.js --ignore src/crawler/*.json"
   }
 }
