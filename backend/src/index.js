@@ -12,6 +12,7 @@ const db = require('./db');
 
 const api = require('./api');
 const jwtMiddleware = require('./lib/middlewares/jwt');
+const cache = require('./lib/cache');
 
 db.connect();
 const app = new Koa();

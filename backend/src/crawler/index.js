@@ -23,7 +23,8 @@ const initialize = async () => {
   const current = (new Date()) / 1000;
   await importData(300, (new Date() / 1000) - 60 * 60 * 24 * 30);
   await importData(300, current);
-  socket.connect();
+  
+  socket.connect(); 
 };
 
 async function registerInitialExchangeRate() {
@@ -68,6 +69,7 @@ async function importData(period, start) {
 // }
  
   log('reloading chart data....');
+
   const bar = new progress.Bar({}, progress.Presets.shades_classic);
   const currencyPairs = [];
   let current = 0;
@@ -77,8 +79,8 @@ async function importData(period, start) {
 
   bar.start(currencyPairs.length, 0);
   bar.update(0);
-  const requests = currencyPairs.map((currencyPair) => () => poloniex.getChartData(currencyPair).then(
-    (data) => ChartData.massImport(currencyPair, data)
+  const requests = currencyPairs.map((currencyPair) => () => poloniex.getChartData(currencyPair, period, start).then(
+    (data) => ChartData.massImport(currencyPair, data, period)
   ));
 
   for(let i = 0; i < Math.ceil(currencyPairs.length / 10); i++) {

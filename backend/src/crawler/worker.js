@@ -40,4 +40,4 @@ Worker.prototype.work = function() {
   return promise;
 };
   
-  module.exports = Worker;
+module.exports = Worker;
