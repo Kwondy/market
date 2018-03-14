@@ -2,29 +2,18 @@ require('dotenv').config();
 const db = require('../db');
 const poloniex = require('../lib/poloniex');
 const ExchangeRate = require('../db/models/ExchangeRate');
-const ChartData = require('../db/models/ChartData');
 const socket = require('./socket');
-const progress = require('cli-progress'); 
 const { parseJSON, polyfill } = require('../lib/common');
 const log = require('../lib/log');
-const currencyPairMap = require('../lib/poloniex/currencyPairMap');
-const Worket = require('./worker');
-// const redis = require('redis');
-const config = require('./config.json');
+const currencyMap = require('../lib/poloniex/currencyPairMap');
+const redis = require('redis');
 
-// const publisher = redis.createClient();
+const publisher = redis.createClient();
 
 const initialize = async () => {
   await db.connect();
-  // await registerInitialExchangeRate();
-  // socket.connect();
-  await ChartData.drop();
-  await importData();
-  const current = (new Date()) / 1000;
-  await importData(300, (new Date() / 1000) - 60 * 60 * 24 * 30);
-  await importData(300, current);
-  
-  socket.connect(); 
+  await registerInitialExchangeRate();
+  socket.connect();
 };
 
 async function registerInitialExchangeRate() {
@@ -38,7 +27,7 @@ async function registerInitialExchangeRate() {
     key => {
       const ticker = tickers[key];
       
-      if (!currencyPairMap[ticker.id.toString()]) {
+      if (!currencyMap[ticker.id.toString()]) {
         return Promise.resolve();
       }
 
@@ -56,46 +45,6 @@ async function registerInitialExchangeRate() {
 
   console.log('succeed!');
 }
-
-async function importData(period, start) {
-//   const test = new ChartData({name: 'hellomttt'});
-//   try {
-//     await test.save();
-//   } catch (e) {
-//     console.log('errorrrr');
-//   }
-//   console.log('okkkkkk');   
-//   return;
-// }
- 
-  log('reloading chart data....');
-
-  const bar = new progress.Bar({}, progress.Presets.shades_classic);
-  const currencyPairs = [];
-  let current = 0;
-  for(let key in currencyPairMap) {
-    currencyPairs.push(currencyPairMap[key]);
-  }
-
-  bar.start(currencyPairs.length, 0);
-  bar.update(0);
-  const requests = currencyPairs.map((currencyPair) => () => poloniex.getChartData(currencyPair, period, start).then(
-    (data) => ChartData.massImport(currencyPair, data, period)
-  ));
-
-  for(let i = 0; i < Math.ceil(currencyPairs.length / 10); i++) {
-    const promises = requests.slice(i * 10, i * 10 + 10).map(thunk => thunk());
-    try {
-      await Promise.all(promises);
-      current += promises.length;
-      bar.update(current);
-    } catch (e) {
-      console.log('error!');
-    }
-  }
-  bar.stop(); 
-}
-
 async function updateEntireRate() {
   log('updating entire rate...');
   const tickers = await poloniex.getTickers();
@@ -122,21 +71,24 @@ const messageHandler = {
     if (!data) return;
     const converted = poloniex.convertToTickerObject(data);
     const { name, ...rest } = converted;
-    if(!name) return;
+    if(!name) return; 
     if(name === 'NULL_NULL') return;
     
     try {
       await ExchangeRate.updateTicker(name, rest);
-      
-      const { last, percentChange, baseVolume, quoteVolume } = converted;
-      const payload = {
-        name, 
-        last: parseFloat(last), 
-        percentChange: parseFloat(percentChange), 
-        baseVolume: parseFloat(baseVolume), 
-        quoteVolume: parseFloat(quoteVolume), 
-        lastUpdated: new Date()
-      };
+
+      const str = JSON.stringify({...converted, lastUpdated: new Date()});
+      publisher.publish('tickers', str);
+      log('Updated', name);
+      // const { last, percentChange, baseVolume, quoteVolume } = converted;
+      // const payload = {
+      //   name, 
+      //   last: parseFloat(last), 
+      //   percentChange: parseFloat(percentChange), 
+      //   baseVolume: parseFloat(baseVolume), 
+      //   quoteVolume: parseFloat(quoteVolume), 
+      //   lastUpdated: new Date()
+      // };
       // publisher.publish('general', JSON.stringify({
       //   type: 'TICKER',
       //   payload
